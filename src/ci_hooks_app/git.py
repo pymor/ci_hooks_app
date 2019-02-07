@@ -27,8 +27,7 @@ def _push_to_gitlab(repo, refspec):
 
 
 def sync_pr_commit(repo, pr_number, base_refname, head_refname):
-    # git fetch origin pull / ID / head: BRANCHNAME
-    committer = author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
+    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
     pr_branch_name = f'github/PR_{pr_number}'
     # create a branch from PR Target, merge PR source into it
     base = repo.branches[base_refname]
