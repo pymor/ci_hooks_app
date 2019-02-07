@@ -60,10 +60,11 @@ def on_pull_request(data):
 
 @lab_webhook.hook(event_type='Pipeline Hook')
 def on_pipeline(data):
-    if data['object_kind'] == 'pipepline':
+    if data['object_kind'] == 'pipeline':
         logger.info("queued synching to gitlab %s", pformat(data['object_attributes']))
         return text("Status queued")
     logger.info("not a pipeline")
+    logger.info('\n'+pformat(data))
     return text("No action needed")
 
 app.static('/favicon.png', './favicon.png', name='favicon')
