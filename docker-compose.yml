@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  ci_hooks_app:
+    build: .
+
+    ports:
+      - 49000:8080
+    restart: always
+    command: python ci_hooks_app/cli.py -c /ci_hooks_app/config.ini
+    volumes:
+      - ./storage:/storage
+
