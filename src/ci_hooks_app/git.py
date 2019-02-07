@@ -23,7 +23,7 @@ def _push_to_gitlab(repo, refspec):
     cred = pg.credentials.UserPass(username=gl_cfg['user'], password=gl_cfg['private_token'])
     gitlab_remote = repo.remotes['gitlab']
     callbacks = pg.RemoteCallbacks(credentials=cred)
-    gitlab_remote.push([refspec], callbacks=callbacks)
+    gitlab_remote.push([f'+{refspec}'], callbacks=callbacks)
 
 
 def sync_pr_commit(repo, pr_number, base_refname, head_refname):
