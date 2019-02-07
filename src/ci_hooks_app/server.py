@@ -5,6 +5,7 @@ from sanic.log import logger
 from sanic_github_webhook import GitHubWebhook, GitLabWebhook
 from sanic import Sanic
 from sanic.response import text
+from sanic_githubapp import GitHubApp
 
 from ci_hooks_app.git import sync_pr_commit
 
@@ -16,6 +17,12 @@ hub_webhook = GitHubWebhook(app, secret=config['github']['webhook_secret'])
 # Defines '/gitlab' endpoint
 lab_webhook = GitLabWebhook(app, secret=config['github']['webhook_secret'])
 
+app.config['GITHUBAPP_SECRET'] = config['github']['app_secret']
+app.config['GITHUBAPP_KEY'] = open(config['github']['app_key'], 'rb').read()
+app.config['GITHUBAPP_ID'] = config['github']['app_id']
+app.config['GITHUBAPP_ROUTE'] = '/githubapp'
+github_app = GitHubApp(app)
+cl = github_app.installation_client(config['github']['installation_id'])
 
 async def sync_to_gitlab(data):
     from ci_hooks_app.git import setup_repo_mirror
@@ -37,7 +44,12 @@ async def _manual_sync_to_gitlab(slug, github_url):
     repo = setup_repo_mirror(slug, github_url)
     base_refname = 'master'
     head_refname = 'merge_test'
-    sync_pr_commit(repo, 2, base_refname, head_refname)
+    pr_number = 2
+    sync_pr_commit(repo, pr_number, base_refname, head_refname)
+    cl = github_app.installation_client(config['github']['installation_id'])
+    owner, repo = slug.split('/')
+    pr = cl.pull_request(owner, repo, pr_number)
+    pr.create_comment("I'm a bot!")
 
 
 @app.route("manual")

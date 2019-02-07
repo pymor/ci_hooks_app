@@ -27,7 +27,7 @@ RUN wget https://github.com/libgit2/libgit2/archive/v0.27.0.tar.gz && \
     make && \
     make install
 
-RUN ldconfig && pip install ipython jinja2 loguru gitpython sanic six pygit2==0.27 \
+RUN ldconfig && pip install ipython github3.py jinja2 loguru gitpython sanic six pygit2==0.27 \
     && python -c 'import pygit2'
 
 WORKDIR /ci_hooks_app/src
