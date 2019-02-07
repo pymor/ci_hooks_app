@@ -1,3 +1,6 @@
 [submodule "sanic_github_webhook"]
 	path = sanic_github_webhook
 	url = https://github.com/renefritze/python-github-webhook
+[submodule "sanic-githubapp"]
+	path = sanic-githubapp
+	url = https://github.com/renefritze/flask-githubapp
