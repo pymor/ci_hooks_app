@@ -1,0 +1,10 @@
+language: minimal
+distro: xenial
+services:
+    - docker
+
+script:
+    - docker-compose build
+    - docker-compose up -d
+    - sleep 5s
+    - docker-compose stop
