@@ -1,3 +1,5 @@
+import json
+from json import JSONDecodeError
 from pprint import pformat
 
 from sanic.exceptions import abort
@@ -23,6 +25,10 @@ app.config['GITHUBAPP_ID'] = config['github']['app_id']
 app.config['GITHUBAPP_ROUTE'] = '/githubapp'
 github_app = GitHubApp(app)
 cl = github_app.installation_client(config['github']['installation_id'])
+
+LAB_TO_HUB_STATE = {'pending': 'pending', 'running': 'pending', 'success': 'success',
+                    'failed': 'failure'}
+
 
 async def sync_to_gitlab(data):
     from ci_hooks_app.git import setup_repo_mirror
@@ -52,6 +58,45 @@ async def _manual_sync_to_gitlab(slug, github_url):
     pr.create_comment("I'm a bot!")
 
 
+async def _on_pipeline(data):
+    pipeline = data['object_attributes']
+    pipeline['status']
+    cl = github_app.installation_client(config['github']['installation_id'])
+
+    msg = data['commit']['message']
+    # we're only interested in (self-created) PR builds:
+    if not pipeline['ref'].startswith('github/PR'):
+        return
+    logger.info(f"MSG:\n{msg}")
+    try:
+        info = json.loads(msg)
+    except JSONDecodeError:
+        logger.error(f'DECODE ERROR\n{data}')
+        return
+    logger.info(f'Reconstruct info:\n{pformat(info)}')
+    owner, repo = data['project']['path_with_namespace'].split('/')
+    repo = cl.repository(owner, repo)
+    context = f"pipeline/{pipeline['id']}"
+    url = f"{data['project']['web_url']}/pipelines/{pipeline['id']}"
+
+    def _create_status(state):
+        check_run = repo.create_status(
+            description="GitLab PR Pipeline", sha=info['commit_sha'],
+            target_url=url, context=context,
+            state=state
+        )
+        logger.info(f"created new status {state} for {info['commit_sha']} on {url}")
+
+    if pipeline['status'] == 'pending':
+        _create_status('pending')
+    elif pipeline['status'] == 'running':
+        pass
+    elif pipeline['status'] in ['success', 'failed']:
+        _create_status(LAB_TO_HUB_STATE[pipeline['status']])
+    else:
+        logger.error(f'unknown pipeline status {pipeline["status"]}: {pformat(data)}')
+
+
 @app.route("manual")
 def hello_world(request):
     app.add_task(_manual_sync_to_gitlab(slug='pymor/gitlab-ci-test',
@@ -73,7 +118,8 @@ def on_pull_request(data):
 @lab_webhook.hook(event_type='Pipeline Hook')
 def on_pipeline(data):
     if data['object_kind'] == 'pipeline':
-        logger.info("queued synching to gitlab %s", pformat(data['object_attributes']))
+        logger.info("pipeline update from gitlab %s", pformat(data['object_attributes']))
+        app.add_task(_on_pipeline(data))
         return text("Status queued")
     logger.info("not a pipeline")
     logger.info('\n'+pformat(data))

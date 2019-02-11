@@ -10,6 +10,7 @@ sanic = "*"
 "pygit2" = "==0.27"
 ipython = "*"
 "github3.py" = "*"
+bidict = "*"
 
 [dev-packages]
 
