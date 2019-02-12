@@ -24,7 +24,6 @@ app.config['GITHUBAPP_KEY'] = open(config['github']['app_key'], 'rb').read()
 app.config['GITHUBAPP_ID'] = config['github']['app_id']
 app.config['GITHUBAPP_ROUTE'] = '/githubapp'
 github_app = GitHubApp(app)
-cl = github_app.installation_client(config['github']['installation_id'])
 
 LAB_TO_HUB_STATE = {'pending': 'pending', 'running': 'pending', 'success': 'success',
                     'failed': 'failure'}
