@@ -75,7 +75,7 @@ async def _on_pipeline(data):
     logger.info(f'Reconstruct info:\n{pformat(info)}')
     owner, repo = data['project']['path_with_namespace'].split('/')
     repo = cl.repository(owner, repo)
-    context = f"pipeline/{pipeline['id']}"
+    context = 'ci/gitlab/PR'
     url = f"{data['project']['web_url']}/pipelines/{pipeline['id']}"
 
     def _create_status(state):
@@ -89,7 +89,8 @@ async def _on_pipeline(data):
     if pipeline['status'] == 'pending':
         _create_status('pending')
     elif pipeline['status'] == 'running':
-        pass
+        # while github has no 'running' status, we still might signify an update here
+        _create_status('pending')
     elif pipeline['status'] in ['success', 'failed']:
         _create_status(LAB_TO_HUB_STATE[pipeline['status']])
     else:
