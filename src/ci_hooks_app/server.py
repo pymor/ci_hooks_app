@@ -26,8 +26,8 @@ app.config['GITHUBAPP_ROUTE'] = '/githubapp'
 github_app = GitHubApp(app)
 
 LAB_TO_HUB_STATE = {'pending': 'pending', 'running': 'pending', 'success': 'success',
-                    'failed': 'failure'}
-
+                    'failed': 'failure', 'canceled': 'error'}
+GITLAB_PR_PREFIX = 'github/PR'
 
 async def sync_to_gitlab(data):
     from ci_hooks_app.git import setup_repo_mirror
@@ -44,19 +44,6 @@ async def sync_to_gitlab(data):
     sync_pr_commit(repo, pr['number'], base_refname, head_refname)
 
 
-async def _manual_sync_to_gitlab(slug, github_url):
-    from ci_hooks_app.git import setup_repo_mirror
-    repo = setup_repo_mirror(slug, github_url)
-    base_refname = 'master'
-    head_refname = 'merge_test'
-    pr_number = 2
-    sync_pr_commit(repo, pr_number, base_refname, head_refname)
-    cl = github_app.installation_client(config['github']['installation_id'])
-    owner, repo = slug.split('/')
-    pr = cl.pull_request(owner, repo, pr_number)
-    pr.create_comment("I'm a bot!")
-
-
 async def _on_pipeline(data):
     pipeline = data['object_attributes']
     pipeline['status']
@@ -64,7 +51,7 @@ async def _on_pipeline(data):
 
     msg = data['commit']['message']
     # we're only interested in (self-created) PR builds:
-    if not pipeline['ref'].startswith('github/PR'):
+    if not pipeline['ref'].startswith(GITLAB_PR_PREFIX):
         return
     logger.info(f"MSG:\n{msg}")
     try:
@@ -79,39 +66,28 @@ async def _on_pipeline(data):
     url = f"{data['project']['web_url']}/pipelines/{pipeline['id']}"
 
     def _create_status(state):
-        check_run = repo.create_status(
+        return repo.create_status(
             description="GitLab PR Pipeline", sha=info['commit_sha'],
             target_url=url, context=context,
             state=state
         )
-        logger.info(f"created new status {state} for {info['commit_sha']} on {url}")
 
-    if pipeline['status'] == 'pending':
-        _create_status('pending')
-    elif pipeline['status'] == 'running':
-        # while github has no 'running' status, we still might signify an update here
-        _create_status('pending')
-    elif pipeline['status'] in ['success', 'failed']:
-        _create_status(LAB_TO_HUB_STATE[pipeline['status']])
-    else:
+    try:
+        hub_state = LAB_TO_HUB_STATE[pipeline['status']]
+    except KeyError:
         logger.error(f'unknown pipeline status {pipeline["status"]}: {pformat(data)}')
-
-
-@app.route("manual")
-def hello_world(request):
-    app.add_task(_manual_sync_to_gitlab(slug='pymor/gitlab-ci-test',
-                                        github_url='https://github.com/pymor/gitlab-ci-test.git'))
-    return text('OK')
-    return abort(404, "These are not the droids you're looking for.")
+        hub_state = 'failure'
+    status = _create_status(hub_state)
+    logger.info(f"created new status {status} for {info['commit_sha']} on {url}")
 
 
 @hub_webhook.hook(event_type='pull_request')
 def on_pull_request(data):
-    if data['action'] == 'synchronize':
+    if data['action'] in ['synchronize', 'opened']:
         logger.info("queued synching to gitlab")
         app.add_task(sync_to_gitlab(data))
         return text("Sync queued")
-    logger.info("not a synchronize")
+    logger.info(f"not a synchronize {data['action']}")
     return text("No action needed")
 
 
