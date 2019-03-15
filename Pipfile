@@ -1,18 +1,19 @@
 [[source]]
+name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
-name = "pypi"
-
-[packages]
-kuyruk = "*"
-sanic = "*"
-"e1839a8" = {path = ".", editable = true}
-"pygit2" = "==0.27"
-ipython = "*"
-"github3.py" = "*"
-bidict = "*"
 
 [dev-packages]
+
+[packages]
+ipython = "*"
+github3-py = "*"
+jinja2 = "*"
+loguru = "*"
+gitpython = "*"
+sanic = "*"
+six = "*"
+pygit2 = "==0.27"
 
 [requires]
 python_version = "3.6"
