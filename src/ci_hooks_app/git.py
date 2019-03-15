@@ -28,17 +28,24 @@ def _push_to_gitlab(repo, refspec):
     gitlab_remote.push([f'+{refspec}'], callbacks=callbacks)
 
 
-def sync_pr_commit(repo, pr_number, base_refname, head_refname):
-    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
+def _setup_base_repo_for_sync(base_repo, pr_number, base_refname):
     pr_branch_name = f'github/PR_{pr_number}'
     # create a branch from PR Target, merge PR source into it
-    base = repo.branches[base_refname]
+    base = base_repo.branches[base_refname]
     # start with clean slate for teh target merge branch
     try:
-        repo.branches[pr_branch_name].delete()
+        base_repo.branches[pr_branch_name].delete()
     except KeyError:
         pass
-    pr_branch = repo.create_branch(pr_branch_name, base.get_object())
+    pr_branch = base_repo.create_branch(pr_branch_name, base.get_object())
+
+    return pr_branch, pr_branch_name, base
+
+
+def sync_pr_commit(repo, pr_number, base_refname, head_refname):
+    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
+    pr_branch, pr_branch_name, base = _setup_base_repo_for_sync(repo, pr_number, base_refname)
+
     origin = repo.remotes['origin']
     f = origin.fetch([f'pull/{pr_number}/head'])
     fetch_head = repo.lookup_reference('FETCH_HEAD')
@@ -56,6 +63,35 @@ def sync_pr_commit(repo, pr_number, base_refname, head_refname):
     commit = repo.create_commit(pr_refspec, author, author, message, tree,
                                 [base.target, fetch_head.target])
     _push_to_gitlab(repo, pr_refspec)
+    print(commit)
+
+
+def sync_forked_pr_commit(head_repo, base_repo, pr_number, base_refname, head_refname, head_sha):
+    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
+    pr_branch, pr_branch_name, base = _setup_base_repo_for_sync(base_repo, pr_number, base_refname)
+
+    origin = base_repo.remotes['origin']
+    f = origin.fetch([f'pull/{pr_number}/head'])
+    try:
+        head_remote = base_repo.create_remote(name='fork', url=head_repo.path)
+    except ValueError:
+        head_remote = base_repo.remotes['fork']
+    head_remote.fetch([f'refs/heads/{head_refname}'])
+    fetch_head = base_repo.get(head_sha)
+    ind = base_repo.merge_commits(base.get_object(), fetch_head)
+    if ind.conflicts is not None:
+        logger.info(f'not syncing merge commit for {pr_branch_name} due to existing conflicts')
+        return
+    tree = ind.write_tree()
+    info = {"repo_url": origin.url, "pr": pr_number, "base": base_refname,
+            "head_ref": head_refname, "pr_branch": pr_branch_name,
+            "commit_sha": head_sha}
+    import json
+    message = json.dumps(info)
+    pr_refspec = f'refs/heads/{pr_branch_name}'
+    commit = base_repo.create_commit(pr_refspec, author, author, message, tree,
+                                [base.target, head_sha])
+    _push_to_gitlab(base_repo, pr_refspec)
     print(commit)
 
 

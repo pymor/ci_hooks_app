@@ -9,7 +9,7 @@ from sanic import Sanic
 from sanic.response import text
 from sanic_githubapp import GitHubApp
 
-from ci_hooks_app.git import sync_pr_commit
+from ci_hooks_app.git import sync_pr_commit, sync_forked_pr_commit
 
 app = Sanic()
 
@@ -28,27 +28,46 @@ github_app = GitHubApp(app)
 LAB_TO_HUB_STATE = {'pending': 'pending', 'running': 'pending', 'success': 'success',
                     'failed': 'failure', 'canceled': 'error'}
 GITLAB_PR_PREFIX = 'github/PR'
+UNSAFE_CHANGED_FILES = ['.ci/', '.travis.yml', 'azure-pipelines.yml']
+
+
+def check_pr_safe(pr_object):
+    for pr_file in pr_object.files():
+        for bad in UNSAFE_CHANGED_FILES:
+            if bad in pr_file.filename:
+                return False
+    return True
+
 
 async def sync_to_gitlab(data):
     from ci_hooks_app.git import setup_repo_mirror
     pr = data['pull_request']
     base_slug = pr['base']['repo']['full_name']
+    head_slug = pr['head']['repo']['full_name']
     base_github_url = pr['base']['repo']['clone_url']
     head_github_url = pr['head']['repo']['clone_url']
-    if head_github_url != base_github_url:
-        logger.info(f'Will not sync/build foreign PR from {head_github_url}')
-        return
-    repo = setup_repo_mirror(base_slug, base_github_url)
+    client = github_app.installation_client(config['github']['installation_id'])
+    owner, repo = base_slug.split('/')
+    number = pr['number']
+    pr_object = client.pull_request(owner, repo, number)
+    base_repo = setup_repo_mirror(base_slug, base_github_url)
     base_refname = pr['base']['ref']
     head_refname = pr['head']['ref']
-    sync_pr_commit(repo, pr['number'], base_refname, head_refname)
+    if base_github_url != head_github_url:
+        if not check_pr_safe(pr_object=pr_object):
+            logger.info(f'Will not sync/build foreign PR from {head_github_url}')
+            usr = pr['user']['login']
+            pr_object.create_comment(f'Hey @{usr} it looks like this PR touches our CI config, therefore I am not starting a gitlab-ci build for it'
+                                     ' and it will not be mergeable.')
+            return
+        head_repo = setup_repo_mirror(head_slug, head_github_url)
+        sync_forked_pr_commit(head_repo, base_repo, number, base_refname, head_refname, pr['head']['sha'])
+    else:
+        sync_pr_commit(base_repo, number, base_refname, head_refname)
 
 
 async def _on_pipeline(data):
     pipeline = data['object_attributes']
-    pipeline['status']
-    cl = github_app.installation_client(config['github']['installation_id'])
-
     msg = data['commit']['message']
     # we're only interested in (self-created) PR builds:
     if not pipeline['ref'].startswith(GITLAB_PR_PREFIX):
@@ -61,6 +80,7 @@ async def _on_pipeline(data):
         return
     logger.info(f'Reconstruct info:\n{pformat(info)}')
     owner, repo = data['project']['path_with_namespace'].split('/')
+    cl = github_app.installation_client(config['github']['installation_id'])
     repo = cl.repository(owner, repo)
     context = 'ci/gitlab/PR'
     url = f"{data['project']['web_url']}/pipelines/{pipeline['id']}"
