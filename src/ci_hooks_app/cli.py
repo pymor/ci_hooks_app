@@ -50,6 +50,21 @@ def _args(argv):
     return args
 
 
+def interactive(argv=None):
+    """ Execute the application CLI.
+
+    :param argv: argument list to parse (sys.argv by default)
+    """
+    args = _args(argv)
+    logger.debug(args.warn)
+    logger.debug("starting execution")
+
+    config.read_file(open(args.config, 'rt'))
+    # do not move, needs to be imported after config is set up
+    from ci_hooks_app import server
+    return server.github_app
+
+
 if __name__ == "__main__":
     try:
         status = main()
