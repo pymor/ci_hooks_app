@@ -6,7 +6,7 @@ from pygit2.errors import GitError
 from ci_hooks_app.config import config
 
 STORAGE_ROOT = Path(config['local']['repository_storage'])
-
+AUTHOR = pg.Signature('pyMOR Bot', 'bot@pymor.org')
 
 def _first_clone(slug, github_url):
     path = STORAGE_ROOT / slug
@@ -20,12 +20,15 @@ def _first_clone(slug, github_url):
     return repo
 
 
-def _push_to_gitlab(repo, refspec):
+def _push_to_gitlab(repo, refspec, force=True):
     gl_cfg = config['gitlab']
     cred = pg.credentials.UserPass(username=gl_cfg['user'], password=gl_cfg['private_token'])
     gitlab_remote = repo.remotes['gitlab']
     callbacks = pg.RemoteCallbacks(credentials=cred)
-    gitlab_remote.push([f'+{refspec}'], callbacks=callbacks)
+    if force:
+        gitlab_remote.push([f'+{refspec}'], callbacks=callbacks)
+    else:
+        gitlab_remote.push([refspec], callbacks=callbacks)
 
 
 def _setup_base_repo_for_sync(base_repo, pr_number, base_refname):
@@ -43,7 +46,6 @@ def _setup_base_repo_for_sync(base_repo, pr_number, base_refname):
 
 
 def sync_pr_commit(repo, pr_number, base_refname, head_refname):
-    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
     pr_branch, pr_branch_name, base = _setup_base_repo_for_sync(repo, pr_number, base_refname)
 
     origin = repo.remotes['origin']
@@ -60,14 +62,12 @@ def sync_pr_commit(repo, pr_number, base_refname, head_refname):
     import json
     message = json.dumps(info)
     pr_refspec = f'refs/heads/{pr_branch_name}'
-    commit = repo.create_commit(pr_refspec, author, author, message, tree,
+    commit = repo.create_commit(pr_refspec, AUTHOR, AUTHOR, message, tree,
                                 [base.target, fetch_head.target])
     _push_to_gitlab(repo, pr_refspec)
-    print(commit)
 
 
 def sync_forked_pr_commit(head_repo, base_repo, pr_number, base_refname, head_refname, head_sha):
-    author = pg.Signature('pyMOR Bot', 'bot@pymor.org')
     pr_branch, pr_branch_name, base = _setup_base_repo_for_sync(base_repo, pr_number, base_refname)
 
     origin = base_repo.remotes['origin']
@@ -89,10 +89,24 @@ def sync_forked_pr_commit(head_repo, base_repo, pr_number, base_refname, head_re
     import json
     message = json.dumps(info)
     pr_refspec = f'refs/heads/{pr_branch_name}'
-    commit = base_repo.create_commit(pr_refspec, author, author, message, tree,
-                                [base.target, head_sha])
+    commit = base_repo.create_commit(pr_refspec, AUTHOR, AUTHOR, message, tree,
+                                     [base.target, head_sha])
     _push_to_gitlab(base_repo, pr_refspec)
-    print(commit)
+
+
+def sync_forked_branch_commit(head_repo, base_repo, head_refname, head_sha):
+    origin = base_repo.remotes['origin']
+    try:
+        head_remote = base_repo.create_remote(name='fork', url=head_repo.path)
+    except ValueError:
+        head_remote = base_repo.remotes['fork']
+    head_refspec = [f'refs/heads/{head_refname}']
+    head_branch = head_remote.fetch(head_refspec)
+    fetch_head = base_repo.get(head_sha)
+    gitlab_branch = f'github/PUSH_{head_refname}'
+    gitlab_refspec = f'refs/heads/{gitlab_branch}'
+    base_repo.create_branch(gitlab_branch, fetch_head, True)
+    _push_to_gitlab(base_repo, gitlab_refspec)
 
 
 def setup_repo_mirror(slug, github_url):

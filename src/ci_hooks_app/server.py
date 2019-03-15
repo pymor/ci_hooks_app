@@ -9,7 +9,7 @@ from sanic import Sanic
 from sanic.response import text
 from sanic_githubapp import GitHubApp
 
-from ci_hooks_app.git import sync_pr_commit, sync_forked_pr_commit
+from ci_hooks_app.git import sync_pr_commit, sync_forked_pr_commit, sync_forked_branch_commit
 
 app = Sanic()
 
@@ -54,14 +54,19 @@ async def sync_to_gitlab(data):
     base_refname = pr['base']['ref']
     head_refname = pr['head']['ref']
     if base_github_url != head_github_url:
+        usr = pr['user']['login']
         if not check_pr_safe(pr_object=pr_object):
             logger.info(f'Will not sync/build foreign PR from {head_github_url}')
-            usr = pr['user']['login']
             pr_object.create_comment(f'Hey @{usr} it looks like this PR touches our CI config, therefore I am not starting a gitlab-ci build for it'
                                      ' and it will not be mergeable.')
             return
         head_repo = setup_repo_mirror(head_slug, head_github_url)
         sync_forked_pr_commit(head_repo, base_repo, number, base_refname, head_refname, pr['head']['sha'])
+        try:
+            sync_forked_branch_commit(head_repo, base_repo, head_refname, pr['head']['sha'])
+        except Exception as ex:
+            pr_object.create_comment(
+                f'I could not start a branch Gitlab-CI build:\n ```\n{ex}\n````')
     else:
         sync_pr_commit(base_repo, number, base_refname, head_refname)
 
