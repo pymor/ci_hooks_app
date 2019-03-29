@@ -84,7 +84,8 @@ async def _on_pipeline(data):
         logger.error(f'DECODE ERROR\n{data}')
         return
     logger.info(f'Reconstruct info:\n{pformat(info)}')
-    owner, repo = data['project']['path_with_namespace'].split('/')
+    path_comps = data['project']['path_with_namespace'].split('/')
+    owner, repo = path_comps[-2], path_comps[-1]
     cl = github_app.installation_client(config['github']['installation_id'])
     repo = cl.repository(owner, repo)
     context = 'ci/gitlab/PR'

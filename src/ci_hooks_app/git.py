@@ -11,8 +11,12 @@ AUTHOR = pg.Signature('pyMOR Bot', 'bot@pymor.org')
 def _first_clone(slug, github_url):
     path = STORAGE_ROOT / slug
     repo = pg.clone_repository(github_url, str(path), bare=True)
-    gitlab_url = f"{config['gitlab']['url']}/{slug}"
-    logger.info(f'CLONING {github_url}')
+    parent_group = config['gitlab']['parent_group']
+    if parent_group:
+        gitlab_url = f"{config['gitlab']['url']}/{parent_group}/{slug}"
+    else:
+        gitlab_url = f"{config['gitlab']['url']}/{slug}"
+    logger.info(f'CLONING {github_url} with gitlab remote {gitlab_url}')
     gitlab = repo.remotes.create(name='gitlab', url=gitlab_url)
     repo.remotes.set_push_url('gitlab', gitlab_url)
     # the cloned repo object has no branches attrib
