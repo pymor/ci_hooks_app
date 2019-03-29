@@ -6,7 +6,8 @@ from pygit2.errors import GitError
 from ci_hooks_app.config import config
 
 STORAGE_ROOT = Path(config['local']['repository_storage'])
-AUTHOR = pg.Signature('pyMOR Bot', 'bot@pymor.org')
+AUTHOR = pg.Signature(config['author']['name'], config['author']['mail'])
+
 
 def _first_clone(slug, github_url):
     path = STORAGE_ROOT / slug
