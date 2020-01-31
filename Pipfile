@@ -16,4 +16,4 @@ six = "*"
 pygit2 = "==0.27"
 
 [requires]
-python_version = "3.6"
+python_version = "3.7"
