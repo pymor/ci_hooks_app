@@ -39,7 +39,9 @@ def _push_to_gitlab(repo, refspec, force=True):
 def _setup_base_repo_for_sync(base_repo, pr_number, base_refname):
     pr_branch_name = f'github/PR_{pr_number}'
     # create a branch from PR Target, merge PR source into it
-    base = base_repo.branches[base_refname]
+    origin = base_repo.remotes['origin']
+    origin.fetch([base_refname])
+    base = base_repo.branches[f'origin/{base_refname}']
     # start with clean slate for teh target merge branch
     try:
         base_repo.branches[pr_branch_name].delete()
