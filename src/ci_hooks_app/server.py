@@ -129,6 +129,11 @@ def on_pipeline(data):
     logger.info('\n'+pformat(data))
     return text("No action needed")
 
+
+@app.route("/status")
+async def test(request):
+    return text("ok")
+
 app.static('/favicon.png', './favicon.png', name='favicon')
 app.static('/favicon.ico', './favicon.png', name='favicon')
 
