@@ -28,10 +28,12 @@ github_app = GitHubApp(app)
 LAB_TO_HUB_STATE = {'pending': 'pending', 'running': 'pending', 'success': 'success',
                     'failed': 'failure', 'canceled': 'error'}
 GITLAB_PR_PREFIX = 'github/PR'
-UNSAFE_CHANGED_FILES = ['.ci/', '.travis.yml', 'azure-pipelines.yml']
+UNSAFE_CHANGED_FILES = ['.ci/', '.travis.yml', 'azure-pipelines.yml', '.env', '.github']
 
 
 def check_pr_safe(pr_object):
+    if str(pr_object.user.id) in config['github']['contributor_safelist']:
+        return True
     for pr_file in pr_object.files():
         for bad in UNSAFE_CHANGED_FILES:
             if bad in pr_file.filename:
@@ -57,7 +59,7 @@ async def sync_to_gitlab(data):
         usr = pr['user']['login']
         if not check_pr_safe(pr_object=pr_object):
             logger.info(f'Will not sync/build foreign PR from {head_github_url}')
-            pr_object.create_comment(f'Hey @{usr} it looks like this PR touches our CI config, therefore I am not starting a gitlab-ci build for it'
+            pr_object.create_comment(f'Hey @{usr} it looks like this PR touches our CI config (and you are not in my contributor safelist), therefore I am not starting a gitlab-ci build for it'
                                      ' and it will not be mergeable.')
             return
         head_repo = setup_repo_mirror(head_slug, head_github_url)
@@ -129,3 +131,4 @@ def on_pipeline(data):
 
 app.static('/favicon.png', './favicon.png', name='favicon')
 app.static('/favicon.ico', './favicon.png', name='favicon')
+
