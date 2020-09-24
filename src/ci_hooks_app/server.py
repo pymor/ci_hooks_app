@@ -32,6 +32,9 @@ UNSAFE_CHANGED_FILES = ['.ci/', '.travis.yml', 'azure-pipelines.yml', '.env', '.
 
 
 def check_pr_safe(pr_object):
+    for review in pr_object.reviews():
+        if review.as_dict()['state'].lower() == 'approved':
+            return True
     if str(pr_object.user.id) in config['github']['contributor_safelist'].split(','):
         return True
     for pr_file in pr_object.files():

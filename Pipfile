@@ -6,14 +6,6 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-ipython = "*"
-github3-py = "*"
-jinja2 = "*"
-loguru = "*"
-gitpython = "*"
-sanic = "*"
-six = "*"
-pygit2 = "==0.27"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
