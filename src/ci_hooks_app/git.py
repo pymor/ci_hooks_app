@@ -47,7 +47,7 @@ def _setup_base_repo_for_sync(base_repo, pr_number, base_refname):
         base_repo.branches[pr_branch_name].delete()
     except KeyError:
         pass
-    pr_branch = base_repo.create_branch(pr_branch_name, base.get_object())
+    pr_branch = base_repo.create_branch(pr_branch_name, base_repo[base.target.hex])
 
     return pr_branch, pr_branch_name, base
 
@@ -58,7 +58,7 @@ def sync_pr_commit(repo, pr_number, base_refname, head_refname):
     origin = repo.remotes['origin']
     f = origin.fetch([f'pull/{pr_number}/head'])
     fetch_head = repo.lookup_reference('FETCH_HEAD')
-    ind = repo.merge_commits(base.get_object(), fetch_head.get_object())
+    ind = repo.merge_commits(base.target, fetch_head.target)
     if ind.conflicts is not None:
         logger.info(f'not syncing merge commit for {pr_branch_name} due to existing conflicts')
         return

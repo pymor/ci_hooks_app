@@ -133,7 +133,7 @@ def on_pipeline(data):
     return text("No action needed")
 
 
-@app.route("/status")
+@app.route("/status", methods=('GET', 'HEAD'))
 async def test(request):
     return text("ok")
 
