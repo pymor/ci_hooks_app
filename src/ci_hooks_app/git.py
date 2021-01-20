@@ -85,7 +85,7 @@ def sync_forked_pr_commit(head_repo, base_repo, pr_number, base_refname, head_re
         head_remote = base_repo.remotes['fork']
     head_remote.fetch([f'refs/heads/{head_refname}'])
     fetch_head = base_repo.get(head_sha)
-    ind = base_repo.merge_commits(base.get_object(), fetch_head)
+    ind = base_repo.merge_commits(base.target, fetch_head)
     if ind.conflicts is not None:
         logger.info(f'not syncing merge commit for {pr_branch_name} due to existing conflicts')
         return
