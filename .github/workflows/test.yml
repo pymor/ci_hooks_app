@@ -1,0 +1,22 @@
+
+name: Test service
+on:
+  push:
+  schedule:
+  - cron: '12 12 * * 1'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+      - name: Build the stack
+        run: docker-compose build
+      - name: Dummy config
+        run: cp config.{example.,}ini && ls -la 
+      - name: Start the service
+        run: docker-compose up -d && docker-compose ps && docker-compose logs
+      - name: Test
+        run: sleep 2 && docker-compose ps && docker run --network container:ci_hooks_app appropriate/curl -s --retry 10 \
+          --retry-connrefused http://localhost:49000/status
