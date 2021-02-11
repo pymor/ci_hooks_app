@@ -2,6 +2,7 @@ version: '2'
 
 services:
   ci_hooks_app:
+    container_name: ci_hooks_app
     build: .
 
     ports:
