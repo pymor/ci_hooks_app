@@ -14,9 +14,9 @@ jobs:
       - name: Build the stack
         run: docker-compose build
       - name: Dummy config
-        run: mkdir storage && cp config.example.ini ./storage/config.ini
+        run: mkdir storage && cp config.example.ini ./storage/config.ini && date > ./storage/github_app_private_key.pem
       - name: Start the service
         run: docker-compose up -d && docker-compose ps && docker-compose logs
       - name: Test
-        run: sleep 2 && docker-compose ps && docker run --network container:ci_hooks_app appropriate/curl -s --retry 10 \
-          --retry-connrefused http://localhost:49000/status
+        run: sleep 2 && docker-compose ps && docker run --network container:ci_hooks_app appropriate/curl -v --retry 10 \
+          --retry-connrefused http://localhost:8080/status
