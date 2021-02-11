@@ -21,7 +21,7 @@ How does this work
 Setup Instructions
 --------------------
 
- - `cp config{.example,}.ini`
+ - `dir storage && cp config.example.ini ./storage/config.ini`
  - fill in your values as far as you can
  - `docker-compose build && docker-compose up`
  - create a new github app for your organization, get the private key
