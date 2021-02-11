@@ -10,11 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'true'
+          submodules: true
       - name: Build the stack
         run: docker-compose build
       - name: Dummy config
-        run: cp config.{example.,}ini && ls -la 
+        run: mkdir storage && cp config.example.ini ./storage/config.ini
       - name: Start the service
         run: docker-compose up -d && docker-compose ps && docker-compose logs
       - name: Test
