@@ -25,5 +25,6 @@ RUN ldconfig && pip install ipython github3.py jinja2 loguru gitpython sanic==18
 WORKDIR /ci_hooks_app/src
 ENV PYTHONPATH=/ci_hooks_app/src
 ADD . /ci_hooks_app
+RUN pip install /ci_hooks_app/sanic-githubapp  /ci_hooks_app/sanic_github_webhook
 
 EXPOSE 8080
