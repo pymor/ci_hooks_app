@@ -27,8 +27,10 @@ def _first_clone(slug, github_url):
 
 def _push_to_gitlab(repo, refspec, force=True):
     gl_cfg = config['gitlab']
-    cred = pg.credentials.UserPass(username=gl_cfg['user'], password=gl_cfg['private_token'])
+    
     gitlab_remote = repo.remotes['gitlab']
+    auth_method = 'x-access-token'
+    cred = pg.credentials.UserPass(auth_method, gl_cfg['private_token'])
     callbacks = pg.RemoteCallbacks(credentials=cred)
     if force:
         gitlab_remote.push([f'+{refspec}'], callbacks=callbacks)
